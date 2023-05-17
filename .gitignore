@@ -1,0 +1,5 @@
+data/cifar*
+data/__pycache__
+wandb/*
+outputs/*
+__pycache__
