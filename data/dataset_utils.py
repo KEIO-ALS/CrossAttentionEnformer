@@ -1,3 +1,4 @@
+from typing import Any
 import torch
 import torchvision
 import torchvision.transforms as transforms
@@ -8,12 +9,12 @@ from config import get_config
 
 import torch
 from torch.utils.data import Dataset, DataLoader
-import tfrecord
 import os
 import glob
 import numpy as np
 
 import tensorflow as tf
+from tqdm import tqdm
 
 def _TF2Torch(tf_tensor):
    np_tensor = tf_tensor.numpy()
@@ -34,14 +35,14 @@ def _decode_fn(record_bytes, organism):
   target = tf.io.decode_raw(example['target'], tf.float16)
   target = tf.reshape(target, (metadata['target_length'], metadata['num_targets']))
   target = tf.cast(target, tf.float32)
-  return (_TF2Torch(sequence), _TF2Torch(target))
+  return (sequence, target)
 
-def _organism_path(organism):
-    return os.path.join('Basenji', organism)
+# def _organism_path(organism):
+#     return os.path.join('Basenji')
 
 def _tfrecord_files(organism, subset):
     return sorted(glob.glob(os.path.join(
-        _organism_path(organism), f'data_{organism}_tfrecords_{subset}-*.tfr'
+        "Basenji", f'data_{organism}_tfrecords_{subset}-*.tfr'
     )), key=lambda x: int(x.split('-')[-1].split('.')[0]))
 
 class Basenji2_Datasets():
@@ -65,6 +66,43 @@ class Basenji2_Datasets():
         num_parallel_reads = get_config("general", "num_workers"),
     ).map(lambda x: _decode_fn(x, self.organism))
   
+
+class Basenji2Loader():
+    def __init__(self, subset) -> None:
+        self.subset = subset
+        human_dataloader_list = Basenji2_Datasets("human", subset)
+        mouse_dataloader_list = Basenji2_Datasets("mouse", subset)
+
+        self.iters = {
+           "human": self._get_iter(human_dataloader_list),
+           "mouse": self._get_iter(mouse_dataloader_list),
+        }
+
+    def _get_iter(self, dataloader_list):
+        for dataloader in dataloader_list:
+           for data in dataloader:
+                yield data
+
+    def _get_count(self, organism):
+       return get_config("data","metadata_"+organism,self.subset+"_seqs")
+    
+    def _get_shorter(self):
+        if self._get_count("human") > self._get_count("mouse"):
+            return "mouse", "human"
+        return "human", "mouse"
+
+    def __len__(self):
+       return self._get_count("human") + self._get_count("mouse")
+
+    def __getitem__(self, index):
+        if index//2 >= self._get_count(self._get_shorter()[0]):
+            organism = self._get_shorter()[1]
+        else:
+            organism = ["human", "mouse"][index%2]
+        x, y = next(self.iters[organism])
+        return _TF2Torch(x), _TF2Torch(y), organism
+
+        
 
 
 
@@ -113,9 +151,9 @@ def load_cifar10():
     return trainloader, testloader
 
 if __name__ == "__main__":
-    trainloader_list = Basenji2_Datasets("human", "train")
-    tloader = trainloader_list[0]
-    for data in tloader:
+    trainloader = Basenji2Loader("test")
+    pbar = tqdm(total=len(trainloader))
+    for i, data in enumerate(trainloader, 0):
        x, y = data
-       print(x.shape, y.shape)
-       break
+       pbar.update()
+    pbar.close()
