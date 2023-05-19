@@ -42,10 +42,10 @@ def _decode_fn(record_bytes, organism):
 
 def _tfrecord_files(organism, subset):
     return sorted(glob.glob(os.path.join(
-        "Basenji", f'data_{organism}_tfrecords_{subset}-*.tfr'
+        "data", "Basenji", f'data_{organism}_tfrecords_{subset}-*.tfr'
     )), key=lambda x: int(x.split('-')[-1].split('.')[0]))
 
-class Basenji2_Datasets():
+class Basenji2Datasets():
   def __init__(self, organism, subset):
     super().__init__()
     self.organism = organism
@@ -67,16 +67,17 @@ class Basenji2_Datasets():
     ).map(lambda x: _decode_fn(x, self.organism))
   
 
-class Basenji2Loader():
+class Basenji2Dataset():
     def __init__(self, subset) -> None:
         self.subset = subset
-        human_dataloader_list = Basenji2_Datasets("human", subset)
-        mouse_dataloader_list = Basenji2_Datasets("mouse", subset)
+        human_dataloader_list = Basenji2Datasets("human", subset)
+        mouse_dataloader_list = Basenji2Datasets("mouse", subset)
 
         self.iters = {
            "human": self._get_iter(human_dataloader_list),
            "mouse": self._get_iter(mouse_dataloader_list),
         }
+        self.batch_size = get_config("general","batch_size")
 
     def _get_iter(self, dataloader_list):
         for dataloader in dataloader_list:
@@ -92,17 +93,59 @@ class Basenji2Loader():
         return "human", "mouse"
 
     def __len__(self):
-       return self._get_count("human") + self._get_count("mouse")
+       return self._get_count("human")//self.batch_size + self._get_count("mouse")//self.batch_size
 
     def __getitem__(self, index):
-        if index//2 >= self._get_count(self._get_shorter()[0]):
+        def get_data(organism):
+            x, y = next(self.iters[organism])
+            x, y = _TF2Torch(x), _TF2Torch(y)
+            x, y = x.unsqueeze(0), y.unsqueeze(0)
+            return x, y
+        
+        if index//2*self.batch_size >= self._get_count(self._get_shorter()[0]):
             organism = self._get_shorter()[1]
         else:
             organism = ["human", "mouse"][index%2]
-        x, y = next(self.iters[organism])
-        return _TF2Torch(x), _TF2Torch(y), organism
 
-        
+        for i in range(self.batch_size):
+            x, y = get_data(organism)
+            if i > 0:
+                px, py = torch.cat([px,x], dim=0), torch.cat([py,y], dim=0)
+            else:
+                px, py = x, y
+        return px, py, organism
+    
+
+def load_basenji2():
+   return Basenji2Dataset("train"), Basenji2Dataset("test"), Basenji2Dataset("valid")
+   config_gen = get_config("general")
+   batch_size, num_workers = config_gen["batch_size"], config_gen["num_workers"]
+   
+   train_dataset = Basenji2Dataset("train")
+   train_loader = DataLoader(
+      dataset=train_dataset,
+      batch_size=batch_size,
+      shuffle=False,
+      num_workers=num_workers,
+   )
+
+   test_dataset = Basenji2Dataset("test")
+   test_loader = DataLoader(
+      dataset=test_dataset,
+      batch_size=batch_size,
+      shuffle=False,
+      num_workers=num_workers,
+   )
+
+   valid_dataset = Basenji2Dataset("valid")
+   valid_loader = DataLoader(
+      dataset=valid_dataset,
+      batch_size=batch_size,
+      shuffle=False,
+      num_workers=num_workers,
+   )     
+
+   return train_loader, test_loader, valid_loader
 
 
 
@@ -149,11 +192,3 @@ def load_cifar10():
     )
 
     return trainloader, testloader
-
-if __name__ == "__main__":
-    trainloader = Basenji2Loader("test")
-    pbar = tqdm(total=len(trainloader))
-    for i, data in enumerate(trainloader, 0):
-       x, y = data
-       pbar.update()
-    pbar.close()

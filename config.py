@@ -9,22 +9,43 @@ c = {
         "num_epochs": 2,
         "random_state": 111,
         "batch_size": 100,
-        "num_workers": 2,
-        "device": "cuda",
+        "num_workers": 1,
+        "device": "cpu",
     },
     "data":{
-  
+        "metadata_human":{
+            "num_targets": 5313,
+            "train_seqs": 34021,
+            "valid_seqs": 2213,
+            "test_seqs": 1937,
+            "seq_length": 131072,
+            "pool_width": 128,
+            "crop_bp": 8192,
+            "target_length": 896
+        },
+        "metadata_mouse":{
+            "num_targets": 1643,
+            "train_seqs": 29295,
+            "valid_seqs": 2209,
+            "test_seqs": 2017,
+            "seq_length": 131072,
+            "pool_width": 128,
+            "crop_bp": 8192,
+            "target_length": 896
+        }
     },
     "models":{
-        "SimpleCNN":{
-            "name": "SimpleCNN",
+        "Enformer":{
+            "name": "Enformer",
             "state": True,
             "train_settings":{
                 "loss_function": nn.CrossEntropyLoss(),
                 "optimizer": optim.Adam,
                 "eval_function": get_classification_accuracy,
             },
-            "param":{},        
+            "param":{
+                "channels": 1024,
+            },        
         },
     },
     "wandb":{

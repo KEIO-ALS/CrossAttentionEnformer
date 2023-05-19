@@ -50,8 +50,9 @@ def train():
             results = ""
             running_loss = 0.0
             print(f"Epoch: {epoch+1}")
-            for i, data in tqdm(enumerate(trainloader, 0)):
-                x, y = data
+            pbar = tqdm(total=len(trainloader))
+            for i, data in enumerate(trainloader, 0):
+                x, y, organism = data
                 x, y = x.to(device), y.to(device)
                 optimizer.zero_grad()
                 outputs = model(x)
@@ -59,15 +60,20 @@ def train():
                 loss.backward()
                 optimizer.step()
                 running_loss += loss.item()
+                pbar.update()
+            pbar.close()
             
             # 各エポック後の処理
             with torch.no_grad():
                 running_score = 0.0
-                for j, data in tqdm(enumerate(testloader, 0)):
+                pbar = tqdm(total=len(trainloader))
+                for j, data in enumerate(testloader, 0):
                     x, y = data
                     x, y = x.to(device), y.to(device)
                     pred = model(x)
                     running_score += config["train_settings"]["eval_function"](pred, y)
+                    pbar.update()
+                pbar.close()
             epoch_loss, epoch_score = running_loss/(i+1), running_score/(j+1)    
             wandb.log({"Loss":epoch_loss, "Score":epoch_score})   
             result = f"Loss: {epoch_loss}  Score: {epoch_score}\n"

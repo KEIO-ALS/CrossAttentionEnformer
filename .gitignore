@@ -1,5 +1,7 @@
 data/cifar*
 data/__pycache__
+data/Basenji/*
 wandb/*
 outputs/*
 __pycache__
+test.ipynb
