@@ -6,7 +6,7 @@ from models.validation_functions import poisson_nll_loss, get_correlation_coeffi
 
 c = {
     "general":{
-        "num_epochs": 151,
+        "num_epochs": 150,
         "random_state": 111,
         "batch_size": 5,
         "num_workers": 1,
