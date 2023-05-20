@@ -1,11 +1,11 @@
-from models.SimpleCNN import SimpleCNN
+from models.Enformer import Enformer
 
 import sys
 sys.path.append('../')
 from config import get_config
 
 models = {
-    "SimpleCNN": SimpleCNN,
+    "Enformer": Enformer,
 }     
     
 # stateがTrueのモデルとその設定一覧を返す

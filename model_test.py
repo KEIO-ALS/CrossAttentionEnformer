@@ -12,7 +12,7 @@ model = Enformer(get_config("models", "Enformer", "param"))
 
 for data in trainloader:
     x, y, o = data
-    print(x.shape)
-    out = model(x)
+    print(x.shape, o)
+    out = model(x, o)
     print(out.shape)
     break

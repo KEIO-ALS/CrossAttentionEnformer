@@ -3,7 +3,9 @@ from torch import nn, einsum
 from torch.nn import functional as F
 
 from einops import rearrange, repeat
-from einops.layers.torch import Reduce, Rearrange
+from einops.layers.torch import Rearrange
+
+import math
 
 
 def _exists(val):
@@ -59,7 +61,50 @@ class Attention(nn.Module):
         out = einsum('b i j, b j d -> b i d', attn, v)
         out = rearrange(out, '(b h) n d -> b n (h d)', h = h)
         return self.Wout(out)
-    
+
+class PreNorm(nn.Module):
+    def __init__(self, fn, q_dim, kv_dim = None):
+        super().__init__()
+        self.fn = fn
+        self.q_norm = nn.LayerNorm(q_dim)
+        self.kv_norm = nn.LayerNorm(kv_dim) if _exists(kv_dim) else None
+
+    def forward(self, x, **kwargs):
+        x = self.q_norm(x)
+        if _exists(self.kv_norm):
+            kv = kwargs['kv']
+            kv_normed = self.kv_norm(kv)
+            kwargs.update(kv=kv_normed)
+        return self.fn(x, **kwargs)
+
+class FeedForward(nn.Module):
+    def __init__(self, dim, mult = 4, dropout = 0.):
+        super().__init__()
+        self.ff = nn.Sequential(
+            nn.Linear(dim, dim*mult),
+            nn.Dropout(dropout),
+            nn.GELU(),
+            nn.Linear(dim*mult, dim),
+            nn.Dropout(dropout)
+        )
+
+    def forward(self, x):
+        return self.ff(x)
+
+def TransformerBlock(input_dim, num_head, head_dim, mult, dropout):
+    return nn.Sequential(
+        PreNorm(Attention(
+            q_dim=input_dim,
+            num_head=num_head,
+            head_dim=head_dim,
+            dropout=dropout,
+        ), q_dim=input_dim),
+        PreNorm(FeedForward(
+            dim=num_head*head_dim,
+            mult=mult,
+            dropout=dropout,
+        ), q_dim=input_dim)
+    )
 
 class Residual(nn.Module):
     def __init__(self, module:nn.Module) -> None:
@@ -69,14 +114,10 @@ class Residual(nn.Module):
     def forward(self, x: torch.Tensor, *args, **kwargs):
         return x + self.module(x, *args, **kwargs)
     
-class GELU(nn.Module):
-    def forward(self, x):
-        return torch.sigmoid(1.702 * x) * x
-    
 def ConvBlock(input_dim, output_dim = None, kernel_size = 1):
     return nn.Sequential(
         nn.BatchNorm1d(input_dim),
-        GELU(),
+        nn.GELU(),
         nn.Conv1d(
             in_channels=input_dim,
             out_channels=_default(output_dim, input_dim),
@@ -88,10 +129,36 @@ def ConvBlock(input_dim, output_dim = None, kernel_size = 1):
 def Stem(channels):
     return nn.Sequential(
         Rearrange('b n d -> b d n'),
-        nn.Conv1d(4, channels//2, 15, padding=7),
+        nn.Conv1d(4, channels//2, 15, padding="same"),
         Residual(ConvBlock(channels//2)),
         AttentionPool(channels//2, pool_size=2)
     )
+
+def _exponential_linspace_int(start, end, num, divisible_by=1, reverse=False):
+    def _round(x):
+        return int(round(x/divisible_by)*divisible_by)
+    base = math.exp(math.log(end/start) / (num))
+    result = [_round(start*base**i) for i in range(num+1)]
+    if reverse:
+        result.reverse()
+        return result
+    return result
+
+def ConvTower(channels, num_conv):
+    filter_list = _exponential_linspace_int(
+        start=channels//2,
+        end=channels,
+        num=num_conv,
+        divisible_by=2,
+    )
+    conv_layers = []
+    for input_dim, output_dim in zip(filter_list[:-1], filter_list[1:]):
+        conv_layers.append(nn.Sequential(
+            ConvBlock(input_dim, output_dim, kernel_size=5),
+            Residual(ConvBlock(output_dim, output_dim, 1)),
+            AttentionPool(output_dim, pool_size=2)
+        ))
+    return nn.Sequential(*conv_layers)
 
 class AttentionPool(nn.Module):
     def __init__(self, input_dim, pool_size = 2):
@@ -114,3 +181,32 @@ class AttentionPool(nn.Module):
 
         attn = logits.softmax(dim = -1)
         return (x * attn).sum(dim = -1)
+    
+class Pointwise(nn.Module):
+    def __init__(self, trim, channels, dropout) -> None:
+        super().__init__()
+        self.trim = trim
+
+        self.conv_block = nn.Sequential(
+            nn.BatchNorm1d(896),
+            nn.GELU(),
+            nn.Linear(channels, channels*2, bias=False),
+        )
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x):
+        if self.trim>0:
+            x = x[..., self.trim:-self.trim, :]
+        x = self.conv_block(x)
+        x = self.dropout(x)
+        return F.gelu(x)
+    
+class EnformerOutputHead(nn.Module):
+    def __init__(self, channels, output_dim) -> None:
+        super().__init__()
+
+        self.conv = nn.Linear(channels*2, output_dim, bias=False)
+    
+    def forward(self, x):
+        x = self.conv(x)
+        return F.softplus(x)
