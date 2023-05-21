@@ -40,7 +40,10 @@ class Attention(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.Wout = nn.Linear(inner_dim, q_dim)
 
-    def forward(self, x: torch.Tensor, kv=None, mask=None):
+    def forward(self, x, **kwargs):
+        kv = kwargs.get('kv', None)
+        mask = kwargs.get('mask', None)
+
         h = self.num_head
 
         q, k, v = self.Wq(x), self.Wk(_default(kv, x)), self.Wv(_default(kv, x))
@@ -210,3 +213,25 @@ class EnformerOutputHead(nn.Module):
     def forward(self, x):
         x = self.conv(x)
         return F.softplus(x)
+
+class CrossAttentionBlock(nn.Module):
+    def __init__(self, latent_dim, input_dim, num_head=8, dropout=.0):
+        super().__init__()
+
+        self.cross_attn = PreNorm(Attention(
+            q_dim=latent_dim,
+            kv_dim=input_dim,
+            num_head=num_head,
+            head_dim=latent_dim//num_head,
+            dropout=dropout,
+        ), q_dim=latent_dim)
+
+        self.ff = PreNorm(FeedForward(
+            dim=latent_dim,
+            mult=4,
+            dropout=dropout,
+        ), q_dim=latent_dim)
+    
+    def forward(self, x, kv):
+        x = self.cross_attn(x, kv=kv)
+        return self.ff(x)

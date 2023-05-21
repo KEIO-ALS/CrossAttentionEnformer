@@ -1,4 +1,5 @@
 from models.Enformer import Enformer
+from models.CrossAttentionEnformer import CrossAttentionEnformer
 
 import sys
 sys.path.append('../')
@@ -6,9 +7,9 @@ from config import get_config
 
 models = {
     "Enformer": Enformer,
+    "CrossAttentionEnformer": CrossAttentionEnformer,
 }     
-    
-# stateがTrueのモデルとその設定一覧を返す
+
 def get_models():
     selected_models = []
     for key in models:
