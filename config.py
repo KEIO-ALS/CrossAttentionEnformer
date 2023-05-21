@@ -6,9 +6,9 @@ from models.validation_functions import poisson_nll_loss, get_correlation_coeffi
 
 c = {
     "general":{
-        "num_epochs": 150,
+        "num_epochs": 1,
         "random_state": 111,
-        "batch_size": 5,
+        "batch_size": 1,
         "num_workers": 1,
         "device": "cpu",
     },
@@ -57,7 +57,7 @@ c = {
     "models":{
         "Enformer":{
             "name": "Enformer",
-            "state": True,
+            "state": False,
             "train_settings":{
                 "loss_function": poisson_nll_loss,
                 "optimizer": optim.Adam,
@@ -67,6 +67,24 @@ c = {
             "param":{
                 "channels": 1024,
                 "num_conv": 6,
+                "num_attn": 11,
+                "dropout_attn": .4,
+                "dropout_output": .05,
+            },        
+        },
+        "CrossAttentionEnformer":{
+            "name": "CrossAttentionEnformer",
+            "state": True,
+            "train_settings":{
+                "loss_function": poisson_nll_loss,
+                "optimizer": optim.Adam,
+                "lr": 5e-4,
+                "eval_function": get_correlation_coefficient,
+            },
+            "param":{
+                "token_dim": 32,
+                "num_latents": 1024,
+                "channels": 1024,
                 "num_attn": 11,
                 "dropout_attn": .4,
                 "dropout_output": .05,
