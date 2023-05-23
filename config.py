@@ -8,19 +8,18 @@ c = {
     "general":{
         "num_epochs": 1,
         "random_state": 111,
-        "batch_size": 1,
+        "batch_size": 4,
         "num_workers": 1,
         "device": "cpu",
     },
     "data":{
         "metadata_human":{
             "num_targets": 5313,
-            # "train_seqs": 34021,
-            # "valid_seqs": 2213,
-            # "test_seqs": 1937,
-            "train_seqs": 20,
+            "train_seqs": 34021,
             "valid_seqs": 2213,
-            "test_seqs": 10,
+            "test_seqs": 1937,
+            # "train_seqs": 4,
+            # "test_seqs": 4,
             "seq_length": 131072,
             "pool_width": 128,
             "crop_bp": 8192,
@@ -28,12 +27,11 @@ c = {
         },
         "metadata_mouse":{
             "num_targets": 1643,
-            # "train_seqs": 29295,
-            # "valid_seqs": 2209,
-            # "test_seqs": 2017,
-            "train_seqs": 20,
+            "train_seqs": 29295,
             "valid_seqs": 2209,
-            "test_seqs": 10,
+            "test_seqs": 2017,
+            # "train_seqs": 0,
+            # "test_seqs": 0,
             "seq_length": 131072,
             "pool_width": 128,
             "crop_bp": 8192,
@@ -57,7 +55,7 @@ c = {
     "models":{
         "Enformer":{
             "name": "Enformer",
-            "state": False,
+            "state": True,
             "train_settings":{
                 "loss_function": poisson_nll_loss,
                 "optimizer": optim.Adam,
@@ -92,7 +90,7 @@ c = {
         },
     },
     "wandb":{
-        "learning_rate": 0.02,
+        "learning_rate": 5e-4,
         "architecture": "Enformer",
         "dataset": "Basenji2",
         "epochs": 10,

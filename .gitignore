@@ -4,4 +4,4 @@ data/Basenji/*
 wandb/*
 outputs/*
 __pycache__
-test.ipynb
+*.ipynb

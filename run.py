@@ -48,7 +48,7 @@ def train():
 
     for model, config in get_models():
         os.makedirs(f"outputs/{now}/"+config["name"])
-        wandb.init(project="CAE"+config["name"], config=get_config("wandb"))
+        wandb.init(project="CAE_ALL"+config["name"], config=get_config("wandb"))
         model = model.to(device)
         
         train_settings = config["train_settings"]

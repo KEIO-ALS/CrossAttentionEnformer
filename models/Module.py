@@ -14,8 +14,6 @@ def _exists(val):
 def _default(val, d):
     return val if _exists(val) else d
 
-
-
 class Attention(nn.Module):
     def __init__(
             self,
@@ -215,7 +213,7 @@ class EnformerOutputHead(nn.Module):
         return F.softplus(x)
 
 class CrossAttentionBlock(nn.Module):
-    def __init__(self, latent_dim, input_dim, num_head=8, dropout=.0):
+    def __init__(self, latent_dim, input_dim, num_head=8, dropout=.4):
         super().__init__()
 
         self.cross_attn = PreNorm(Attention(
