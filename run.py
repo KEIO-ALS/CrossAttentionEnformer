@@ -38,10 +38,10 @@ def train():
     torch.multiprocessing.freeze_support()
     config_gen = get_config("general")
 
-    if config_gen["device"] == "cuda":
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    else:
-        device = torch.device(config_gen["device"])
+    # if config_gen["device"] == "cuda":
+    #     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # else:
+    device = torch.device(config_gen["device"])
 
     num_epochs = config_gen["num_epochs"]
     scopes = get_config("data", "scopes")
@@ -62,7 +62,7 @@ def train():
             print(f"Epoch: {epoch+1}")
             pbar = tqdm(total=len(trainloader))
             for i, data in enumerate(trainloader, 0):
-                if i < len(trainloader):
+                if i < len(trainloader) and (not config_gen["test_run"] or i<2):
                     x, y, organism = data
                     x, y = x.to(device), y.to(device)
                     optimizer.zero_grad()
@@ -82,7 +82,7 @@ def train():
                 pbar = tqdm(total=len(testloader))
                 counter = 0
                 for j, data in enumerate(testloader, 0):
-                    if j < len(testloader):
+                    if j < len(testloader) and (not config_gen["test_run"] or j<2):
                         x, y, organism = data
                         x, y = x.to(device), y.to(device)
                         pred = model(x, organism)

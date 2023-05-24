@@ -27,7 +27,7 @@ class CrossAttentionEnformer(nn.Module):
         self.encode = CrossAttentionBlock(channels, input_dim=token_dim)
 
         self.transformer_tower = nn.Sequential(
-            *[TransformerBlock(channels, 8, 128, 4, dropout_attn) for _ in range(num_attn)]
+            *[TransformerBlock(channels, 8, 192, 4, dropout_attn) for _ in range(num_attn)]
         )
 
         self.decode_human = nn.Sequential(

@@ -3,7 +3,7 @@ import pandas as pd
 
 def poisson_nll_loss(pred, y):
     pred, y = pred.float(), y.float()
-    loss = pred - y * torch.log(pred)
+    loss = pred - y * torch.log(pred.clamp(min=1e-20))
     return loss.mean()
 
 def _torch2numpy(tensor):

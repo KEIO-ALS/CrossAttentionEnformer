@@ -22,7 +22,7 @@ class Enformer(nn.Module):
         )
 
         self.transformer_tower = nn.Sequential(
-            *[TransformerBlock(channels, 8, 128, 4, dropout_attn) for _ in range(num_attn)]
+            *[TransformerBlock(channels, 8, channels//8, 4, dropout_attn) for _ in range(num_attn)]
         )
 
         self.decode_human = nn.Sequential(
