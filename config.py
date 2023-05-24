@@ -82,8 +82,8 @@ c = {
             },
             "param":{
                 "token_dim": 24,
-                "num_latents": 1536,
-                "channels": 1152,
+                "num_latents": 1024,
+                "channels": 1536,
                 "num_attn": 11,
                 "dropout_attn": .05,
                 "dropout_output": .05,
